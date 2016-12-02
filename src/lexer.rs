@@ -3,7 +3,7 @@
  */
 
 #[derive(Clone, Debug, PartialEq)]
-enum pub Token
+pub enum Token
 {
 	// Keywords
 	Abort,
@@ -72,6 +72,7 @@ enum pub Token
 	IsNull,
 	Join,
 	Key,
+	Left,
 	Like,
 	Limit,
 	Match,
@@ -251,7 +252,7 @@ fn word_to_token(word: String) -> Token
 		"ISNULL" => IsNull,
 		"JOIN" =>Join,
 		"KEY" => Key,
-		"LEFT" => Join,
+		"LEFT" => Left,
 		"LIKE" => Like,
 		"LIMIT" => Limit,
 		"MATCH" => Match,
@@ -307,7 +308,7 @@ fn word_to_token(word: String) -> Token
 	}
 }
 
-num LexerState {
+enum LexerState {
 	NoState,
 	Word,
 	Backtick,
@@ -556,110 +557,113 @@ pub fn parse(sql: &str) -> Vec<Token>
 
 	lexer.tokens
 }
-/*
+
 #[cfg(test)]
 mod test {
-    use super::parse;
+	use super::parse;
 
-    fn id(value: &str) -> super::Token {
-        super::Token::Ident(value.to_string())
-    }
+	fn id(value: &str) -> super::Token
+	{
+		super::Token::Ident(value.to_string())
+	}
 
-    fn number(value: &str) -> super::Token {
-        super::Token::Number(value.to_string())
-    }
+	fn number(value: &str) -> super::Token
+	{
+		super::Token::Number(value.to_string())
+	}
 
-    #[test]
-    fn test_sql_lexer_dontconfuseidentswithkeywords() {
-        use super::Token::*;
-        // Not: AS, Ident("df")
-        assert_eq!(parse("asdf"), vec![Ident("asdf".to_string())]);
-    }
+	#[test]
+	fn test_sql_lexer_dontconfuseidentswithkeywords()
+	{
+		use super::Token::*;
+		// Not: AS, Ident("df")
+		assert_eq!(parse("asdf"), vec![Ident("asdf".to_string())]);
+	}
 
-    #[test]
-    fn test_sql_lexer_escape() {
-        use super::Token::*;
-        // Escaped apostrophe
-        assert_eq!(parse(r"'\''"), vec![StringLiteral("'".to_string())]);
-    }
+	#[test]
+	fn test_sql_lexer_escape()
+	{
+		use super::Token::*;
+		// Escaped apostrophe
+		assert_eq!(parse(r"'\''"), vec![StringLiteral("'".to_string())]);
+	}
 
-    #[test]
-    fn test_sql_lexer_numbers() {
-        use super::Token::*;
+	#[test]
+	fn test_sql_lexer_numbers()
+	{
+		use super::Token::*;
 
-        assert_eq!(parse("12345"), vec![number("12345")]);
-        assert_eq!(parse("0.25"), vec![number("0.25")]);
-        assert_eq!(parse("0.25 + -0.25"), vec![number("0.25"), Plus, Minus, number("0.25")]);
-        assert_eq!(parse("-0.25 + 0.25"), vec![Minus, number("0.25"), Plus, number("0.25")]);
-        assert_eq!(parse("- 0.25 - -0.25"), vec![Minus, number("0.25"), Minus, Minus, number("0.25")]);
-        assert_eq!(parse("- 0.25 --0.25"), vec![Minus, number("0.25")]);
-        assert_eq!(parse("0.25 -0.25"), vec![number("0.25"), Minus, number("0.25")]);
-    }
+		assert_eq!(parse("12345"), vec![number("12345")]);
+		assert_eq!(parse("0.25"), vec![number("0.25")]);
+		assert_eq!(parse("0.25 + -0.25"), vec![number("0.25"), Plus, Minus, number("0.25")]);
+		assert_eq!(parse("-0.25 + 0.25"), vec![Minus, number("0.25"), Plus, number("0.25")]);
+		assert_eq!(parse("- 0.25 - -0.25"), vec![Minus, number("0.25"), Minus, Minus, number("0.25")]);
+		assert_eq!(parse("- 0.25 --0.25"), vec![Minus, number("0.25")]);
+		assert_eq!(parse("0.25 -0.25"), vec![number("0.25"), Minus, number("0.25")]);
+	}
 
-    #[test]
-    fn test_sql_lexer_query1() {
-        use super::Token::*;
+	#[test]
+	fn test_sql_lexer_query1()
+	{
+		use super::Token::*;
 
-        assert_eq!(parse(" SeLECT a,    b as alias1 , c alias2, d ` alias three ` fRoM table1 WHERE a='Hello World'; "),
-            vec![
-                Select, id("a"), Comma, id("b"), As, id("alias1"), Comma,
-                id("c"), id("alias2"), Comma, id("d"), id(" alias three "),
-                From, id("table1"),
-                Where, id("a"), Equal, StringLiteral("Hello World".to_string()), Semicolon
-            ]
-        );
-    }
+		assert_eq!(parse(" SeLECT a,    b as alias1 , c alias2, d ` alias three ` fRoM table1 WHERE a='Hello World'; "),
+			vec![
+				Select, id("a"), Comma, id("b"), As, id("alias1"), Comma,
+				id("c"), id("alias2"), Comma, id("d"), id(" alias three "),
+				From, id("table1"),
+				Where, id("a"), Equal, StringLiteral("Hello World".to_string()), Semicolon
+			]
+		);
+	}
+	
+	#[test]
+	fn test_sql_lexer_query2() {
+		use super::Token::*;
 
-    #[test]
-    fn test_sql_lexer_query2() {
-        use super::Token::*;
+		let query = r"
+		-- Get employee count from each department
+		SELECT d.id departmentId, count(e.id) employeeCount
+		FROM department d
+		LEFT JOIN employee e ON e.departmentId = d.id
+		GROUP BY departmentId;
+		";
 
-        let query = r"
-        -- Get employee count from each department
-        SELECT d.id departmentId, count(e.id) employeeCount
-        FROM department d
-        LEFT JOIN employee e ON e.departmentId = d.id
-        GROUP BY departmentId;
-        ";
+		assert_eq!(parse(query), vec![
+			Select, id("d"), Dot, id("id"), id("departmentId"), Comma, id("count"), LeftParen, id("e"), Dot, id("id"), RightParen, id("employeeCount"),
+			From, id("department"), id("d"),
+			Left, Join, id("employee"), id("e"), On, id("e"), Dot, id("departmentId"), Equal, id("d"), Dot, id("id"),
+			Group, By, id("departmentId"), Semicolon
+		]);
+	}
+	
+	#[test]
+	fn test_sql_lexer_operators() {
+		use super::Token::*;
 
-        assert_eq!(parse(query), vec![
-            Select, id("d"), Dot, id("id"), id("departmentId"), Comma, id("count"), LeftParen, id("e"), Dot, id("id"), RightParen, id("employeeCount"),
-            From, id("department"), id("d"),
-            Left, Join, id("employee"), id("e"), On, id("e"), Dot, id("departmentId"), Equal, id("d"), Dot, id("id"),
-            Group, By, id("departmentId"), Semicolon
-        ]);
-    }
+		assert_eq!(parse("> = >=< =><"),
+			vec![
+				GreaterThan, Equal, GreaterThanOrEqual, LessThan, Equal, GreaterThan, LessThan
+			]
+		);
 
-    #[test]
-    fn test_sql_lexer_operators() {
-        use super::Token::*;
+		assert_eq!(parse(" ><>> >< >"),
+			vec![
+				GreaterThan, NotEqual, GreaterThan, GreaterThan, LessThan, GreaterThan
+			]
+		);
+	}
+	
+	#[test]
+	fn test_sql_lexer_blockcomment() {
+		use super::Token::*;
 
-        assert_eq!(parse("> = >=< =><"),
-            vec![
-                GreaterThan, Equal, GreaterThanOrEqual, LessThan, Equal, GreaterThan, LessThan
-            ]
-        );
-
-        assert_eq!(parse(" ><>> >< >"),
-            vec![
-                GreaterThan, NotEqual, GreaterThan, GreaterThan, LessThan, GreaterThan
-            ]
-        );
-    }
-
-    #[test]
-    fn test_sql_lexer_blockcomment() {
-        use super::Token::*;
-
-        assert_eq!(parse("hello/*/a/**/,/*there, */world"), vec![
-            id("hello"), Comma, id("world")
-        ]);
-
-        assert_eq!(parse("/ */"), vec![ForwardSlash, Asterisk, ForwardSlash]);
-
-        assert_eq!(parse("/**/"), vec![]);
-
-        assert_eq!(parse("a/* test\ntest** /\nb*/c"), vec![id("a"), id("c")]);
-    }
+		assert_eq!(parse("hello/*/a/**/,/*there, */world"), vec![
+			id("hello"), Comma, id("world")
+		]);
+		assert_eq!(parse("/ */"), vec![ForwardSlash, Asterisk, ForwardSlash]);
+		assert_eq!(parse("/**/"), vec![]);
+		assert_eq!(parse("a/* test\ntest** /\nb*/c"), vec![id("a"), id("c")]);
+	}
 }
-*/
+
