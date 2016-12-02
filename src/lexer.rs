@@ -558,9 +558,23 @@ pub fn parse(sql: &str) -> Vec<Token>
 	lexer.tokens
 }
 
+pub trait Tokenizer
+{
+	fn tokenize(&self) -> Vec<Token>;
+}
+
+impl Tokenizer for String
+{
+	fn tokenize(&self) -> Vec<Token>
+	{
+		parse(self)
+	}
+} 
+
 #[cfg(test)]
 mod test {
 	use super::parse;
+	use super::Tokenizer;
 
 	fn id(value: &str) -> super::Token
 	{
@@ -578,6 +592,7 @@ mod test {
 		use super::Token::*;
 		// Not: AS, Ident("df")
 		assert_eq!(parse("asdf"), vec![Ident("asdf".to_string())]);
+		assert_eq!("asdf".to_string().tokenize(), vec![Ident("asdf".to_string())]);
 	}
 
 	#[test]
@@ -586,6 +601,7 @@ mod test {
 		use super::Token::*;
 		// Escaped apostrophe
 		assert_eq!(parse(r"'\''"), vec![StringLiteral("'".to_string())]);
+		assert_eq!(r"'\''".to_string().tokenize(), vec![StringLiteral("'".to_string())]);
 	}
 
 	#[test]
@@ -594,12 +610,19 @@ mod test {
 		use super::Token::*;
 
 		assert_eq!(parse("12345"), vec![number("12345")]);
+		assert_eq!("12345".to_string().tokenize(), vec![number("12345")]);
 		assert_eq!(parse("0.25"), vec![number("0.25")]);
+		assert_eq!("0.25".to_string().tokenize(), vec![number("0.25")]);
 		assert_eq!(parse("0.25 + -0.25"), vec![number("0.25"), Plus, Minus, number("0.25")]);
+		assert_eq!("0.25 + -0.25".to_string().tokenize(), vec![number("0.25"), Plus, Minus, number("0.25")]);
 		assert_eq!(parse("-0.25 + 0.25"), vec![Minus, number("0.25"), Plus, number("0.25")]);
+		assert_eq!("-0.25 + 0.25".to_string().tokenize(), vec![Minus, number("0.25"), Plus, number("0.25")]);
 		assert_eq!(parse("- 0.25 - -0.25"), vec![Minus, number("0.25"), Minus, Minus, number("0.25")]);
+		assert_eq!("- 0.25 - -0.25".to_string().tokenize(), vec![Minus, number("0.25"), Minus, Minus, number("0.25")]);
 		assert_eq!(parse("- 0.25 --0.25"), vec![Minus, number("0.25")]);
+		assert_eq!("- 0.25 --0.25".to_string().tokenize(), vec![Minus, number("0.25")]);
 		assert_eq!(parse("0.25 -0.25"), vec![number("0.25"), Minus, number("0.25")]);
+		assert_eq!("0.25 -0.25".to_string().tokenize(), vec![number("0.25"), Minus, number("0.25")]);
 	}
 
 	#[test]
