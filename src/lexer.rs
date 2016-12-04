@@ -3,7 +3,7 @@
  */
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum Token
+pub enum TokenType
 {
 	// Keywords
 	Abort(usize,usize),
@@ -151,9 +151,9 @@ pub enum Token
 	StringLiteral(String,usize,usize),
 }
 
-fn character_to_token(c: char, line_number: usize, column_number: usize) -> Option<Token>
+fn character_to_token(c: char, line_number: usize, column_number: usize) -> Option<TokenType>
 {
-	use self::Token::*;
+	use self::TokenType::*;
 
 	Some(match c {
 		'=' => Equal(line_number, column_number),
@@ -177,9 +177,9 @@ fn character_to_token(c: char, line_number: usize, column_number: usize) -> Opti
 	})
 }
 
-fn word_to_token(word: String, line_number: usize, column_number: usize) -> Token
+fn word_to_token(word: String, line_number: usize, column_number: usize) -> TokenType
 {
-	use self::Token::*;
+	use self::TokenType::*;
 	let uppercase: String =word.chars().flat_map( |c| c.to_uppercase() ).collect();
 	match uppercase.as_ref() {
 		"ABORT" => Abort(line_number, column_number),
@@ -322,7 +322,7 @@ enum LexerState {
 }
 
 pub struct Lexer {
-	pub tokens: Vec<Token>,
+	pub tokens: Vec<TokenType>,
 
 	state: LexerState,
 	string_buffer: String,
@@ -379,7 +379,7 @@ impl Lexer {
 				Ok(LexerState::NoState)
 			},
 			c => {
-				use self::Token::*;
+				use self::TokenType::*;
 
 				match character_to_token(c, self.line_number, self.column_number) {
 					Some(LessThan(_,_)) | Some(GreaterThan(_,_)) | Some(Minus(_,_)) | Some(Pipe(_,_)) | Some(ForwardSlash(_,_)) => {
@@ -445,7 +445,7 @@ impl Lexer {
 				match c {
 					Some('`') => {
 						let buffer = self.move_string_buffer();
-						self.tokens.push(Token::Ident(buffer, self.start_line_number, self.start_column_number));
+						self.tokens.push(TokenType::Ident(buffer, self.start_line_number, self.start_column_number));
 						LexerState::NoState
 					},
 					Some(c) => {
@@ -464,7 +464,7 @@ impl Lexer {
 						(false, '\'') => {
 							// unescaped apostrophe
 							let buffer = self.move_string_buffer();
-							self.tokens.push(Token::StringLiteral(buffer, self.start_line_number, self.start_column_number));
+							self.tokens.push(TokenType::StringLiteral(buffer, self.start_line_number, self.start_column_number));
 							LexerState::NoState
 						},
 						(false, '\\') => {
@@ -495,18 +495,18 @@ impl Lexer {
 						},
 						c => {
 							let buffer = self.move_string_buffer();
-							self.tokens.push(Token::Number(buffer, self.start_line_number, self.start_column_number));
+							self.tokens.push(TokenType::Number(buffer, self.start_line_number, self.start_column_number));
 							self.no_state(c).unwrap()
 						}
 					}
 				} else {
 					let buffer = self.move_string_buffer();
-					self.tokens.push(Token::Number(buffer, self.start_line_number, self.start_column_number));
+					self.tokens.push(TokenType::Number(buffer, self.start_line_number, self.start_column_number));
 					LexerState::NoState
 				}
 			},
 			LexerState::OperatorDisambiguate { first } => {
-				use self::Token::*;
+				use self::TokenType::*;
 
 				if let Some(c) = c {
 					match (first, c) {
@@ -567,7 +567,7 @@ impl Lexer {
 	}
 }
 
-pub fn parse(sql: &str) -> Vec<Token>
+pub fn parse(sql: &str) -> Vec<TokenType>
 {
 	let mut lexer = Lexer::new();
 
@@ -579,12 +579,12 @@ pub fn parse(sql: &str) -> Vec<Token>
 
 pub trait Tokenizer
 {
-	fn tokenize(&self) -> Vec<Token>;
+	fn tokenize(&self) -> Vec<TokenType>;
 }
 
 impl Tokenizer for String
 {
-	fn tokenize(&self) -> Vec<Token>
+	fn tokenize(&self) -> Vec<TokenType>
 	{
 		parse(self)
 	}
@@ -595,20 +595,20 @@ mod test {
 	use super::parse;
 	use super::Tokenizer;
 
-	fn id(value: &str, line_number: usize, column_number: usize) -> super::Token
+	fn id(value: &str, line_number: usize, column_number: usize) -> super::TokenType
 	{
-		super::Token::Ident(value.to_string(), line_number, column_number)
+		super::TokenType::Ident(value.to_string(), line_number, column_number)
 	}
 
-	fn number(value: &str, line_number: usize, column_number: usize) -> super::Token
+	fn number(value: &str, line_number: usize, column_number: usize) -> super::TokenType
 	{
-		super::Token::Number(value.to_string(), line_number, column_number)
+		super::TokenType::Number(value.to_string(), line_number, column_number)
 	}
 
 	#[test]
 	fn test_sql_lexer_dontconfuseidentswithkeywords()
 	{
-		use super::Token::*;
+		use super::TokenType::*;
 		// Not: AS, Ident("df")
 		assert_eq!(parse("asdf"), vec![Ident("asdf".to_string(), 1, 1)]);
 		assert_eq!("asdf".to_string().tokenize(), vec![Ident("asdf".to_string(), 1, 1)]);
@@ -617,7 +617,7 @@ mod test {
 	#[test]
 	fn test_sql_lexer_escape()
 	{
-		use super::Token::*;
+		use super::TokenType::*;
 		// Escaped apostrophe
 		assert_eq!(parse(r"'\''"), vec![StringLiteral("'".to_string(),1,1)]);
 		assert_eq!(r"'\''".to_string().tokenize(), vec![StringLiteral("'".to_string(),1,1)]);
@@ -627,7 +627,7 @@ mod test {
 	#[test]
 	fn test_sql_lexer_numbers()
 	{
-		use super::Token::*;
+		use super::TokenType::*;
 
 		assert_eq!(parse("12345"), vec![number("12345",1,1)]);
 		assert_eq!("12345".to_string().tokenize(), vec![number("12345",1,1)]);
@@ -643,7 +643,7 @@ mod test {
 	#[test]
 	fn test_sql_lexer_query1()
 	{
-		use super::Token::*;
+		use super::TokenType::*;
 
 		assert_eq!(parse(" SeLECT a,    b as alias1 , c alias2, d ` alias three ` \nfRoM table1 WHERE a='Hello World'; "),
 			vec![
@@ -657,7 +657,7 @@ mod test {
 
 	#[test]
 	fn test_sql_lexer_query2() {
-		use super::Token::*;
+		use super::TokenType::*;
 
 		let query = r"
 		-- Get employee count from each department
@@ -677,7 +677,7 @@ mod test {
 
 	#[test]
 	fn test_sql_lexer_operators() {
-		use super::Token::*;
+		use super::TokenType::*;
 
 		assert_eq!(parse("> = >=< =><"),
 			vec![
@@ -694,7 +694,7 @@ mod test {
 	
 	#[test]
 	fn test_sql_lexer_blockcomment() {
-		use super::Token::*;
+		use super::TokenType::*;
 
 		assert_eq!(parse("hello/*/a/**/,/*there, */world"), vec![
 			id("hello",1,1), Comma(1,14), id("world",1,26)
