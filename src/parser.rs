@@ -1,9 +1,8 @@
 use ast;
 use lexer;
 
-use lexer::Token;
-use lexer::Tokenizer;
-use ast::*;
+use tokens::Token;
+use ast::Ast;
 
 pub struct ParseError
 {
@@ -18,12 +17,3 @@ pub enum ParseResult
 	Success(Ast),
 }
 
-trait Parse
-{
-	fn parse_tokens(tokens: Vec<Token>) -> ParseResult;
-}
-
-fn parse<T: Parse>(s: &str) -> T
-{
-	parse_tokens(s.tokenize())
-}
