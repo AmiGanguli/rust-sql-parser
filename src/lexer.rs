@@ -1,312 +1,186 @@
 /*
- * Based on the LambdaDB tokenizer, with keywords added from SQLite.
+ * Generously hacked LambdaDB tokenizer, with keywords added from SQLite.
  */
 
 #[derive(Clone, Debug, PartialEq)]
+pub struct Token
+{
+	token_type: TokenType,
+	line: usize,
+	column: usize,
+	value: String,
+}
+
+impl Token
+{
+	pub fn new(tt: TokenType, line: usize, column: usize, value: String) -> Self
+	{
+		Self {
+			token_type: tt,
+			line: line,
+			column: column,
+			value: value
+		}
+	}
+	// A convenience function to help write test cases more concisely.
+	//
+	pub fn vec( tuples: &[(TokenType, usize, usize, &str)] ) -> Vec<Self>
+	{
+		let mut ret = Vec::new();
+		for tuple in tuples {
+			ret.push(Self::new(tuple.0, tuple.1, tuple.2, tuple.3.to_string()));
+		}
+		ret
+	}
+}
+
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum TokenType
 {
 	// Keywords
-	Abort(usize,usize),
-	Action(usize,usize),
-	Add(usize,usize),
-	After(usize,usize),
-	All(usize,usize),
-	Alter(usize,usize),
-	Analyze(usize,usize),
-	And(usize,usize),
-	As(usize,usize),
-	Asc(usize,usize),
-	Attach(usize,usize),
-	Autoincr(usize,usize),
-	Before(usize,usize),
-	Begin(usize,usize),
-	Between(usize,usize),
-	By(usize,usize),
-	Cascade(usize,usize),
-	Case(usize,usize),
-	Cast(usize,usize),
-	Check(usize,usize),
-	Collate(usize,usize),
-	Column(usize,usize),
-	Commit(usize,usize),
-	Conflict(usize,usize),
-	Constraint(usize,usize),
-	Create(usize,usize),
-	CTime(usize,usize),
-	Database(usize,usize),
-	Default(usize,usize),
-	Deferrable(usize,usize),
-	Deferred(usize,usize),
-	Delete(usize,usize),
-	Desc(usize,usize),
-	Detach(usize,usize),
-	Distinct(usize,usize),
-	Drop(usize,usize),
-	Each(usize,usize),
-	Else(usize,usize),
-	End(usize,usize),
-	Escape(usize,usize),
-	Except(usize,usize),
-	Exclusive(usize,usize),
-	Exists(usize,usize),
-	Explain(usize,usize),
-	Fail(usize,usize),
-	For(usize,usize),
-	Foreign(usize,usize),
-	From(usize,usize),
-	Group(usize,usize),
-	Having(usize,usize),
-	If(usize,usize),
-	Ignore(usize,usize),
-	Immediate(usize,usize),
-	In(usize,usize),
-	Index(usize,usize),
-	Indexed(usize,usize),
-	Initially(usize,usize),
-	Inner(usize,usize),
-	Insert(usize,usize),
-	Instead(usize,usize),
-	Intersect(usize,usize),
-	Into(usize,usize),
-	Is(usize,usize),
-	IsNull(usize,usize),
-	Join(usize,usize),
-	Key(usize,usize),
-	Left(usize,usize),
-	Like(usize,usize),
-	Limit(usize,usize),
-	Match(usize,usize),
-	No(usize,usize),
-	Not(usize,usize),
-	NotNull(usize,usize),
-	Null(usize,usize),
-	Of(usize,usize),
-	Offset(usize,usize),
-	On(usize,usize),
-	Or(usize,usize),
-	Order(usize,usize),
-	Plan(usize,usize),
-	Pragma(usize,usize),
-	Primary(usize,usize),
-	Query(usize,usize),
-	Raise(usize,usize),
-	Recursive(usize,usize),
-	References(usize,usize),
-	Reindex(usize,usize),
-	Release(usize,usize),
-	Rename(usize,usize),
-	Replace(usize,usize),
-	Restrict(usize,usize),
-	Rollback(usize,usize),
-	Row(usize,usize),
-	Savepoint(usize,usize),
-	Select(usize,usize),
-	Set(usize,usize),
-	Table(usize,usize),
-	Temp(usize,usize),
-	Then(usize,usize),
-	To(usize,usize),
-	Transaction(usize,usize),
-	Trigger(usize,usize),
-	Union(usize,usize),
-	Update(usize,usize),
-	Using(usize,usize),
-	Vacuum(usize,usize),
-	Values(usize,usize),
-	View(usize,usize),
-	Virtual(usize,usize),
-	With(usize,usize),
-	Without(usize,usize),
-	When(usize,usize),
-	Where(usize,usize),
+	Abort,
+	Action,
+	Add,
+	After,
+	All,
+	Alter,
+	Analyze,
+	And,
+	As,
+	Asc,
+	Attach,
+	Autoincr,
+	Before,
+	Begin,
+	Between,
+	By,
+	Cascade,
+	Case,
+	Cast,
+	Check,
+	Collate,
+	Column,
+	Commit,
+	Conflict,
+	Constraint,
+	Create,
+	CTime,
+	Database,
+	Default,
+	Deferrable,
+	Deferred,
+	Delete,
+	Desc,
+	Detach,
+	Distinct,
+	Drop,
+	Each,
+	Else,
+	End,
+	Escape,
+	Except,
+	Exclusive,
+	Exists,
+	Explain,
+	Fail,
+	For,
+	Foreign,
+	From,
+	Group,
+	Having,
+	If,
+	Ignore,
+	Immediate,
+	In,
+	Index,
+	Indexed,
+	Initially,
+	Inner,
+	Insert,
+	Instead,
+	Intersect,
+	Into,
+	Is,
+	IsNull,
+	Join,
+	Key,
+	Left,
+	Like,
+	Limit,
+	Match,
+	No,
+	Not,
+	NotNull,
+	Null,
+	Of,
+	Offset,
+	On,
+	Or,
+	Order,
+	Plan,
+	Pragma,
+	Primary,
+	Query,
+	Raise,
+	Recursive,
+	References,
+	Reindex,
+	Release,
+	Rename,
+	Replace,
+	Restrict,
+	Rollback,
+	Row,
+	Savepoint,
+	Select,
+	Set,
+	Table,
+	Temp,
+	Then,
+	To,
+	Transaction,
+	Trigger,
+	Union,
+	Update,
+	Using,
+	Vacuum,
+	Values,
+	View,
+	Virtual,
+	With,
+	Without,
+	When,
+	Where,
 
 	// Non-letter tokens
-	Equal(usize,usize),
-	NotEqual(usize,usize),
-	LessThan(usize,usize),
-	LessThanOrEqual(usize,usize),
-	GreaterThan(usize,usize),
-	GreaterThanOrEqual(usize,usize),
+	Equal,
+	NotEqual,
+	LessThan,
+	LessThanOrEqual,
+	GreaterThan,
+	GreaterThanOrEqual,
 
-	Plus(usize,usize), Minus(usize,usize),
+	Plus, Minus,
 
-	LeftParen(usize,usize), RightParen(usize,usize),
-	LeftBracket(usize,usize), RightBracket(usize,usize),
-	Dot(usize,usize), Comma(usize,usize), Semicolon(usize,usize),
+	LeftParen, RightParen,
+	LeftBracket, RightBracket,
+	Dot, Comma, Semicolon,
 
-	Ampersand(usize,usize), Pipe(usize,usize), ForwardSlash(usize,usize),
+	Ampersand, Pipe, ForwardSlash,
 
 	/// ||, the concatenate operator
-	DoublePipe(usize,usize),
+	DoublePipe,
 
 	/// *, the wildcard for SELECT
-	Asterisk(usize,usize),
+	Asterisk,
 
 	/// ?, the prepared statement placeholder
-	PreparedStatementPlaceholder(usize,usize),
+	PreparedStatementPlaceholder,
 	
 	// Tokens with values
-	Ident(String,usize,usize),
-	Number(String,usize,usize),
-	StringLiteral(String,usize,usize),
-}
-
-fn character_to_token(c: char, line_number: usize, column_number: usize) -> Option<TokenType>
-{
-	use self::TokenType::*;
-
-	Some(match c {
-		'=' => Equal(line_number, column_number),
-		'<' => LessThan(line_number, column_number),
-		'>' => GreaterThan(line_number, column_number),
-		'+' => Plus(line_number, column_number),
-		'-' => Minus(line_number, column_number),
-		'(' => LeftParen(line_number, column_number),
-		')' => RightParen(line_number, column_number),
-		'[' => LeftBracket(line_number, column_number),
-		']' => RightBracket(line_number, column_number),
-		'.' => Dot(line_number, column_number),
-		',' => Comma(line_number, column_number),
-		';' => Semicolon(line_number, column_number),
-		'&' => Ampersand(line_number, column_number),
-		'|' => Pipe(line_number, column_number),
-		'*' => Asterisk(line_number, column_number),
-		'/' => ForwardSlash(line_number, column_number),
-		'?' => PreparedStatementPlaceholder(line_number, column_number),
-		_ => return None
-	})
-}
-
-fn word_to_token(word: String, line_number: usize, column_number: usize) -> TokenType
-{
-	use self::TokenType::*;
-	let uppercase: String =word.chars().flat_map( |c| c.to_uppercase() ).collect();
-	match uppercase.as_ref() {
-		"ABORT" => Abort(line_number, column_number),
-		"ACTION" => Action(line_number, column_number),
-		"ADD" => Add(line_number, column_number),
-		"AFTER" => After(line_number, column_number),
-		"ALL" => All(line_number, column_number),
-		"ALTER" => Alter(line_number, column_number),
-		"ANALYZE" => Analyze(line_number, column_number),
-		"AND" => And(line_number, column_number),
-		"AS" => As(line_number, column_number),
-		"ASC" => Asc(line_number, column_number),
-		"ATTACH" => Attach(line_number, column_number),
-		"AUTOINCREMENT" => Autoincr(line_number, column_number),
-		"BEFORE" => Before(line_number, column_number),
-		"BEGIN" => Begin(line_number, column_number),
-		"BETWEEN" => Between(line_number, column_number),
-		"BY" => By(line_number, column_number),
-		"CASCADE" => Cascade(line_number, column_number),
-		"CASE" => Case(line_number, column_number),
-		"CAST" => Cast(line_number, column_number),
-		"CHECK" => Check(line_number, column_number),
-		"COLLATE" => Collate(line_number, column_number),
-		"COLUMN" => Column(line_number, column_number),
-		"COMMIT" => Commit(line_number, column_number),
-		"CONFLICT" => Conflict(line_number, column_number),
-		"CONSTRAINT" => Constraint(line_number, column_number),
-		"CREATE" => Create(line_number, column_number),
-		"CROSS" => Join(line_number, column_number),
-		"CURRENT_DATE" => CTime(line_number, column_number),
-		"CURRENT_TIME" => CTime(line_number, column_number),
-		"CURRENT_TIMESTAMP" => CTime(line_number, column_number),
-		"DATABASE" => Database(line_number, column_number),
-		"DEFAULT" => Default(line_number, column_number),
-		"DEFERRED" => Deferred(line_number, column_number),
-		"DEFERRABLE" => Deferrable(line_number, column_number),
-		"DELETE" => Delete(line_number, column_number),
-		"DESC" => Desc(line_number, column_number),
-		"DETACH" => Detach(line_number, column_number),
-		"DISTINCT" => Distinct(line_number, column_number),
-		"DROP" => Drop(line_number, column_number),
-		"END" => End(line_number, column_number),
-		"EACH" => Each(line_number, column_number),
-		"ELSE" => Else(line_number, column_number),
-		"ESCAPE" => Escape(line_number, column_number),
-		"EXCEPT" => Except(line_number, column_number),
-		"EXCLUSIVE" => Exclusive(line_number, column_number),
-		"EXISTS" => Exists(line_number, column_number),
-		"EXPLAIN" => Explain(line_number, column_number),
-		"FAIL" => Fail(line_number, column_number),
-		"FOR" => For(line_number, column_number),
-		"FOREIGN" => Foreign(line_number, column_number),
-		"FROM" => From(line_number, column_number),
-		"FULL" => Join(line_number, column_number),
-		"GLOB" => Like(line_number, column_number),
-		"GROUP" => Group(line_number, column_number),
-		"HAVING" => Having(line_number, column_number),
-		"IF" => If(line_number, column_number),
-		"IGNORE" => Ignore(line_number, column_number),
-		"IMMEDIATE" => Immediate(line_number, column_number),
-		"IN" => In(line_number, column_number),
-		"INDEX" => Index(line_number, column_number),
-		"INDEXED" => Indexed(line_number, column_number),
-		"INITIALLY" => Initially(line_number, column_number),
-		"INNER" => Inner(line_number, column_number),
-		"INSERT" => Insert(line_number, column_number),
-		"INSTEAD" => Instead(line_number, column_number),
-		"INTERSECT" => Intersect(line_number, column_number),
-		"INTO" => Into(line_number, column_number),
-		"IS" => Is(line_number, column_number),
-		"ISNULL" => IsNull(line_number, column_number),
-		"JOIN" =>Join(line_number, column_number),
-		"KEY" => Key(line_number, column_number),
-		"LEFT" => Left(line_number, column_number),
-		"LIKE" => Like(line_number, column_number),
-		"LIMIT" => Limit(line_number, column_number),
-		"MATCH" => Match(line_number, column_number),
-		"NATURAL" => Join(line_number, column_number),
-		"NO" => No(line_number, column_number),
-		"NOT" => Not(line_number, column_number),
-		"NOTNULL" => NotNull(line_number, column_number),
-		"NULL" => Null(line_number, column_number),
-		"OF" => Of(line_number, column_number),
-		"OFFSET" => Offset(line_number, column_number),
-		"ON" => On(line_number, column_number),
-		"OR" => Or(line_number, column_number),
-		"ORDER" => Order(line_number, column_number),
-		"OUTER" => Join(line_number, column_number),
-		"PLAN" => Plan(line_number, column_number),
-		"PRAGMA" => Pragma(line_number, column_number),
-		"PRIMARY" => Primary(line_number, column_number),
-		"QUERY" => Query(line_number, column_number),
-		"RAISE" => Raise(line_number, column_number),
-		"RECURSIVE" => Recursive(line_number, column_number),
-		"REFERENCES" => References(line_number, column_number),
-		"REGEXP" => Like(line_number, column_number),
-		"REINDEX" => Reindex(line_number, column_number),
-		"RELEASE" => Release(line_number, column_number),
-		"RENAME" => Rename(line_number, column_number),
-		"REPLACE" => Replace(line_number, column_number),
-		"RESTRICT" => Restrict(line_number, column_number),
-		"RIGHT" => Join(line_number, column_number),
-		"ROLLBACK" => Rollback(line_number, column_number),
-		"ROW" => Row(line_number, column_number),
-		"SAVEPOINT" => Savepoint(line_number, column_number),
-		"SELECT" => Select(line_number, column_number),
-		"SET" => Set(line_number, column_number),
-		"TABLE" => Table(line_number, column_number),
-		"TEMP" => Temp(line_number, column_number),
-		"TEMPORARY" => Temp(line_number, column_number),
-		"THEN" => Then(line_number, column_number),
-		"TO" => To(line_number, column_number),
-		"TRANSACTIOIN" => Transaction(line_number, column_number),
-		"TRIGGER" => Trigger(line_number, column_number),
-		"UNION" => Union(line_number, column_number),
-		"UPDATE" => Update(line_number, column_number),
-		"USING" => Using(line_number, column_number),
-		"VACUUM" => Vacuum(line_number, column_number),
-		"VALUES" => Values(line_number, column_number),
-		"VIEW" => View(line_number, column_number),
-		"VIRTUAL" => Virtual(line_number, column_number),
-		"WITH" => With(line_number, column_number),
-		"WITHOUT" => Without(line_number, column_number),
-		"WHEN" => When(line_number, column_number),
-		"WHERE" => Where(line_number, column_number),
-		_ => Ident(word, line_number, column_number)
-	}
+	Ident,
+	Number,
+	StringLiteral,
 }
 
 enum LexerState {
@@ -322,8 +196,7 @@ enum LexerState {
 }
 
 pub struct Lexer {
-	pub tokens: Vec<TokenType>,
-
+	pub tokens: Vec<Token>,
 	state: LexerState,
 	string_buffer: String,
 	start_line_number: usize,
@@ -344,6 +217,197 @@ impl Lexer {
 			column_number: 0,
 			line_number: 1,
 		}
+	}
+
+	fn push_token(&mut self, tt: TokenType, word: String)
+	{
+		self.tokens.push(Token {
+			line: self.start_line_number, 
+			column: self.start_column_number, 
+			value: word, 
+			token_type: tt 
+		});
+	}
+	
+	fn character_to_token(&self, c: char) -> Option<Token>
+	{
+		use self::TokenType::*;
+
+		let tt: TokenType;
+	
+		match c {
+			'=' => tt = Equal,
+			'<' => tt = LessThan,
+			'>' => tt = GreaterThan,
+			'+' => tt = Plus,
+			'-' => tt = Minus,
+			'(' => tt = LeftParen,
+			')' => tt = RightParen,
+			'[' => tt = LeftBracket,
+			']' => tt = RightBracket,
+			'.' => tt = Dot,
+			',' => tt = Comma,
+			';' => tt = Semicolon,
+			'&' => tt = Ampersand,
+			'|' => tt = Pipe,
+			'*' => tt = Asterisk,
+			'/' => tt = ForwardSlash,
+			'?' => tt = PreparedStatementPlaceholder,
+			_ => return None
+		};
+		Some(Token{ 
+			line: self.start_line_number, 
+			column: self.start_column_number, 
+			value: c.to_string(), 
+			token_type: tt 
+		})
+	}
+
+	fn push_character(&mut self, c: char)
+	{
+		let token = self.character_to_token(c).unwrap();
+		self.tokens.push(token);
+	}
+
+	fn push_word(&mut self)
+	{
+		use self::TokenType::*;
+		let word = self.move_string_buffer();
+		let uppercase: String = word.chars().flat_map( |c| c.to_uppercase() ).collect();
+		let tt: TokenType;
+		
+		match uppercase.as_ref() {
+			"ABORT" => tt = Abort,
+			"ACTION" => tt = Action,
+			"ADD" => tt = Add,
+			"AFTER" => tt = After,
+			"ALL" => tt = All,
+			"ALTER" => tt = Alter,
+			"ANALYZE" => tt = Analyze,
+			"AND" => tt = And,
+			"AS" => tt = As,
+			"ASC" => tt = Asc,
+			"ATTACH" => tt = Attach,
+			"AUTOINCREMENT" => tt = Autoincr,
+			"BEFORE" => tt = Before,
+			"BEGIN" => tt = Begin,
+			"BETWEEN" => tt = Between,
+			"BY" => tt = By,
+			"CASCADE" => tt = Cascade,
+			"CASE" => tt = Case,
+			"CAST" => tt = Cast,
+			"CHECK" => tt = Check,
+			"COLLATE" => tt = Collate,
+			"COLUMN" => tt = Column,
+			"COMMIT" => tt = Commit,
+			"CONFLICT" => tt = Conflict,
+			"CONSTRAINT" => tt = Constraint,
+			"CREATE" => tt = Create,
+			"CROSS" => tt = Join,
+			"CURRENT_DATE" => tt = CTime,
+			"CURRENT_TIME" => tt = CTime,
+			"CURRENT_TIMESTAMP" => tt = CTime,
+			"DATABASE" => tt = Database,
+			"DEFAULT" => tt = Default,
+			"DEFERRED" => tt = Deferred,
+			"DEFERRABLE" => tt = Deferrable,
+			"DELETE" => tt = Delete,
+			"DESC" => tt = Desc,
+			"DETACH" => tt = Detach,
+			"DISTINCT" => tt = Distinct,
+			"DROP" => tt = Drop,
+			"END" => tt = End,
+			"EACH" => tt = Each,
+			"ELSE" => tt = Else,
+			"ESCAPE" => tt = Escape,
+			"EXCEPT" => tt = Except,
+			"EXCLUSIVE" => tt = Exclusive,
+			"EXISTS" => tt = Exists,
+			"EXPLAIN" => tt = Explain,
+			"FAIL" => tt = Fail,
+			"FOR" => tt = For,
+			"FOREIGN" => tt = Foreign,
+			"FROM" => tt = From,
+			"FULL" => tt = Join,
+			"GLOB" => tt = Like,
+			"GROUP" => tt = Group,
+			"HAVING" => tt = Having,
+			"IF" => tt = If,
+			"IGNORE" => tt = Ignore,
+			"IMMEDIATE" => tt = Immediate,
+			"IN" => tt = In,
+			"INDEX" => tt = Index,
+			"INDEXED" => tt = Indexed,
+			"INITIALLY" => tt = Initially,
+			"INNER" => tt = Inner,
+			"INSERT" => tt = Insert,
+			"INSTEAD" => tt = Instead,
+			"INTERSECT" => tt = Intersect,
+			"INTO" => tt = Into,
+			"IS" => tt = Is,
+			"ISNULL" => tt = IsNull,
+			"JOIN" => tt = Join,
+			"KEY" => tt = Key,
+			"LEFT" => tt = Left,
+			"LIKE" => tt = Like,
+			"LIMIT" => tt = Limit,
+			"MATCH" => tt = Match,
+			"NATURAL" => tt = Join,
+			"NO" => tt = No,
+			"NOT" => tt = Not,
+			"NOTNULL" => tt = NotNull,
+			"NULL" => tt = Null,
+			"OF" => tt = Of,
+			"OFFSET" => tt = Offset,
+			"ON" => tt = On,
+			"OR" => tt = Or,
+			"ORDER" => tt = Order,
+			"OUTER" => tt = Join,
+			"PLAN" => tt = Plan,
+			"PRAGMA" => tt = Pragma,
+			"PRIMARY" => tt = Primary,
+			"QUERY" => tt = Query,
+			"RAISE" => tt = Raise,
+			"RECURSIVE" => tt = Recursive,
+			"REFERENCES" => tt = References,
+			"REGEXP" => tt = Like,
+			"REINDEX" => tt = Reindex,
+			"RELEASE" => tt = Release,
+			"RENAME" => tt = Rename,
+			"REPLACE" => tt = Replace,
+			"RESTRICT" => tt = Restrict,
+			"RIGHT" => tt = Join,
+			"ROLLBACK" => tt = Rollback,
+			"ROW" => tt = Row,
+			"SAVEPOINT" => tt = Savepoint,
+			"SELECT" => tt = Select,
+			"SET" => tt = Set,
+			"TABLE" => tt = Table,
+			"TEMP" => tt = Temp,
+			"TEMPORARY" => tt = Temp,
+			"THEN" => tt = Then,
+			"TO" => tt = To,
+			"TRANSACTIOIN" => tt = Transaction,
+			"TRIGGER" => tt = Trigger,
+			"UNION" => tt = Union,
+			"UPDATE" => tt = Update,
+			"USING" => tt = Using,
+			"VACUUM" => tt = Vacuum,
+			"VALUES" => tt = Values,
+			"VIEW" => tt = View,
+			"VIRTUAL" => tt = Virtual,
+			"WITH" => tt = With,
+			"WITHOUT" => tt = Without,
+			"WHEN" => tt = When,
+			"WHERE" => tt = Where,
+			_ => tt = Ident
+		};
+		self.tokens.push(Token{ 
+			line: self.start_line_number, 
+			column: self.start_column_number, 
+			value: word, 
+			token_type: tt 
+		});
 	}
 
 	pub fn is_no_state(&self) -> bool
@@ -380,14 +444,17 @@ impl Lexer {
 			},
 			c => {
 				use self::TokenType::*;
-
-				match character_to_token(c, self.line_number, self.column_number) {
-					Some(LessThan(_,_)) | Some(GreaterThan(_,_)) | Some(Minus(_,_)) | Some(Pipe(_,_)) | Some(ForwardSlash(_,_)) => {
-						Ok(LexerState::OperatorDisambiguate { first: c })
-					},
+				match self.character_to_token(c) {
 					Some(token) => {
-						self.tokens.push(token);
-						Ok(LexerState::NoState)
+						match token.token_type {
+							LessThan | GreaterThan | Minus | Pipe | ForwardSlash => {
+								Ok(LexerState::OperatorDisambiguate { first: c })
+							}
+							_ => {
+								self.tokens.push(token);
+								Ok(LexerState::NoState)
+							}
+						}
 					},
 					None => {
 						// unknown character
@@ -429,23 +496,27 @@ impl Lexer {
 							LexerState::Word
 						}
 						c => {
-							let buffer = self.move_string_buffer();
-							self.tokens.push(word_to_token(buffer, self.start_line_number, self.start_column_number));
+							self.push_word();
 							self.no_state(c).unwrap()
 						}
 					},
 					None => {
-						let buffer = self.move_string_buffer();
-						self.tokens.push(word_to_token(buffer, self.start_line_number, self.start_column_number));
+						self.push_word();
 						LexerState::NoState
 					}
 				}
 			},
 			LexerState::Backtick => {
+				use self::TokenType::*;
 				match c {
 					Some('`') => {
 						let buffer = self.move_string_buffer();
-						self.tokens.push(TokenType::Ident(buffer, self.start_line_number, self.start_column_number));
+						self.tokens.push(Token{
+							line:self.start_line_number, 
+							column:self.start_column_number,
+							value: buffer,
+							token_type: Ident
+						});
 						LexerState::NoState
 					},
 					Some(c) => {
@@ -460,11 +531,17 @@ impl Lexer {
 			},
 			LexerState::Apostrophe { escaping } => {
 				if let Some(c) = c {
+					use self::TokenType::*;
 					match (escaping, c) {
 						(false, '\'') => {
 							// unescaped apostrophe
 							let buffer = self.move_string_buffer();
-							self.tokens.push(TokenType::StringLiteral(buffer, self.start_line_number, self.start_column_number));
+							self.tokens.push(Token {
+								line: self.start_line_number,
+								column: self.start_column_number,
+								value: buffer,
+								token_type: StringLiteral
+							});
 							LexerState::NoState
 						},
 						(false, '\\') => {
@@ -494,14 +571,26 @@ impl Lexer {
 							LexerState::Number { decimal: true }
 						},
 						c => {
+							use self::TokenType::*;
 							let buffer = self.move_string_buffer();
-							self.tokens.push(TokenType::Number(buffer, self.start_line_number, self.start_column_number));
+							self.tokens.push(Token {
+								line: self.start_line_number,
+								column: self.start_column_number,
+								value: buffer,
+								token_type: Number
+							});
 							self.no_state(c).unwrap()
 						}
 					}
 				} else {
+					use self::TokenType::*;
 					let buffer = self.move_string_buffer();
-					self.tokens.push(TokenType::Number(buffer, self.start_line_number, self.start_column_number));
+					self.tokens.push(Token {
+						line: self.start_line_number,
+						column: self.start_column_number,
+						value: buffer,
+						token_type: Number
+					});
 					LexerState::NoState
 				}
 			},
@@ -511,19 +600,19 @@ impl Lexer {
 				if let Some(c) = c {
 					match (first, c) {
 						('<', '>') => {
-							self.tokens.push(NotEqual(self.start_line_number, self.start_column_number));
+							self.push_token(NotEqual, "<>".to_string());
 							LexerState::NoState
 						},
 						('<', '=') => {
-							self.tokens.push(LessThanOrEqual(self.start_line_number, self.start_column_number));
+							self.push_token(LessThanOrEqual, "<=".to_string());
 							LexerState::NoState
 						},
 						('>', '=') => {
-							self.tokens.push(GreaterThanOrEqual(self.start_line_number, self.start_column_number));
+							self.push_token(GreaterThanOrEqual, ">=".to_string());
 							LexerState::NoState
 						},
 						('|', '|') => {
-							self.tokens.push(DoublePipe(self.start_line_number, self.start_column_number));
+							self.push_token(DoublePipe, "||".to_string());
 							LexerState::NoState
 						},
 						('-', '-') => {
@@ -533,12 +622,12 @@ impl Lexer {
 							LexerState::BlockComment { was_prev_char_asterisk: false }
 						},
 						_ => {
-							self.tokens.push(character_to_token(first, self.start_line_number, self.start_column_number).unwrap());
+							self.push_character(first);
 							self.no_state(c).unwrap()
 						}
 					}
 				} else {
-					self.tokens.push(character_to_token(first, self.start_line_number, self.start_column_number).unwrap());
+					self.push_character(first);
 					LexerState::NoState
 				}
 			},
@@ -567,7 +656,7 @@ impl Lexer {
 	}
 }
 
-pub fn parse(sql: &str) -> Vec<TokenType>
+pub fn parse(sql: &str) -> Vec<Token>
 {
 	let mut lexer = Lexer::new();
 
@@ -579,12 +668,12 @@ pub fn parse(sql: &str) -> Vec<TokenType>
 
 pub trait Tokenizer
 {
-	fn tokenize(&self) -> Vec<TokenType>;
+	fn tokenize(&self) -> Vec<Token>;
 }
 
 impl Tokenizer for String
 {
-	fn tokenize(&self) -> Vec<TokenType>
+	fn tokenize(&self) -> Vec<Token>
 	{
 		parse(self)
 	}
@@ -593,25 +682,16 @@ impl Tokenizer for String
 #[cfg(test)]
 mod test {
 	use super::parse;
+	use super::Token;
 	use super::Tokenizer;
-
-	fn id(value: &str, line_number: usize, column_number: usize) -> super::TokenType
-	{
-		super::TokenType::Ident(value.to_string(), line_number, column_number)
-	}
-
-	fn number(value: &str, line_number: usize, column_number: usize) -> super::TokenType
-	{
-		super::TokenType::Number(value.to_string(), line_number, column_number)
-	}
 
 	#[test]
 	fn test_sql_lexer_dontconfuseidentswithkeywords()
 	{
 		use super::TokenType::*;
 		// Not: AS, Ident("df")
-		assert_eq!(parse("asdf"), vec![Ident("asdf".to_string(), 1, 1)]);
-		assert_eq!("asdf".to_string().tokenize(), vec![Ident("asdf".to_string(), 1, 1)]);
+		assert_eq!(parse("asdf"), Token::vec(&[(Ident, 1, 1, "asdf")]));
+		assert_eq!("asdf".to_string().tokenize(), Token::vec(&[(Ident, 1, 1, "asdf")]));
 	}
 
 	#[test]
@@ -619,25 +699,24 @@ mod test {
 	{
 		use super::TokenType::*;
 		// Escaped apostrophe
-		assert_eq!(parse(r"'\''"), vec![StringLiteral("'".to_string(),1,1)]);
-		assert_eq!(r"'\''".to_string().tokenize(), vec![StringLiteral("'".to_string(),1,1)]);
+		assert_eq!(parse(r"'\''"), Token::vec(&[(StringLiteral, 1, 1, "'")]));
+		assert_eq!(r"'\''".to_string().tokenize(), Token::vec(&[(StringLiteral, 1, 1, "'")]));
 	}
-
 
 	#[test]
 	fn test_sql_lexer_numbers()
 	{
 		use super::TokenType::*;
 
-		assert_eq!(parse("12345"), vec![number("12345",1,1)]);
-		assert_eq!("12345".to_string().tokenize(), vec![number("12345",1,1)]);
-		assert_eq!(parse("0.25"), vec![number("0.25",1,1)]);
-		assert_eq!("0.25".to_string().tokenize(), vec![number("0.25",1,1)]);
-		assert_eq!(parse("0.25 + -0.25"), vec![number("0.25",1,1), Plus(1,6), Minus(1,8), number("0.25",1,9)]);
-		assert_eq!("-0.25 + 0.25".to_string().tokenize(), vec![Minus(1,1), number("0.25",1,2), Plus(1,7), number("0.25",1,9)]);
-		assert_eq!("- 0.25 - -0.25".to_string().tokenize(), vec![Minus(1,1), number("0.25",1,3), Minus(1,8), Minus(1,10), number("0.25",1,11)]);
-		assert_eq!("- 0.25 --0.25".to_string().tokenize(), vec![Minus(1,1), number("0.25",1,3)]);
-		assert_eq!("0.25 -0.25".to_string().tokenize(), vec![number("0.25",1,1), Minus(1,6), number("0.25",1,7)]);
+		assert_eq!(parse("12345"), Token::vec(&[(Number, 1, 1, "12345")]));
+		assert_eq!("12345".to_string().tokenize(), Token::vec(&[(Number, 1, 1, "12345")]));
+		assert_eq!(parse("0.25"), Token::vec(&[(Number, 1, 1, "0.25")]));
+		assert_eq!("0.25".to_string().tokenize(), Token::vec(&[(Number, 1, 1, "0.25")]));
+		assert_eq!(parse("0.25 + -0.25"), Token::vec(&[(Number, 1, 1, "0.25"), (Plus, 1, 6, "+"), (Minus, 1, 8, "-"), (Number, 1, 9, "0.25")]));
+		assert_eq!("-0.25 + 0.25".to_string().tokenize(), Token::vec(&[(Minus, 1, 1, "-"),(Number, 1, 2, "0.25"), (Plus, 1, 7, "+"), (Number, 1, 9, "0.25")]));
+		assert_eq!("- 0.25 - -0.25".to_string().tokenize(), Token::vec(&[(Minus, 1, 1, "-"),(Number, 1, 3, "0.25"), (Minus, 1, 8, "-"), (Minus, 1, 10, "-"), (Number, 1, 11, "0.25")]));
+		assert_eq!("- 0.25 --0.25".to_string().tokenize(), Token::vec(&[(Minus, 1, 1, "-"),(Number, 1, 3, "0.25")]));
+		assert_eq!("0.25 -0.25".to_string().tokenize(), Token::vec(&[(Number, 1, 1, "0.25"), (Minus, 1, 6, "-"), (Number, 1, 7, "0.25")]));
 	}
 
 	#[test]
@@ -645,13 +724,14 @@ mod test {
 	{
 		use super::TokenType::*;
 
-		assert_eq!(parse(" SeLECT a,    b as alias1 , c alias2, d ` alias three ` \nfRoM table1 WHERE a='Hello World'; "),
-			vec![
-				Select(1,2), id("a",1,9), Comma(1,10), id("b",1,15), As(1,17), id("alias1",1,20), Comma(1,27),
-				id("c",1,29), id("alias2",1,31), Comma(1,37), id("d",1,39), id(" alias three ",1,41),
-				From(2,1), id("table1",2,6),
-				Where(2,13), id("a",2,19), Equal(2,20), StringLiteral("Hello World".to_string(),2,21), Semicolon(2,34)
-			]
+		assert_eq!(
+			parse(" SeLECT a,    b as alias1 , c alias2, d ` alias three ` \nfRoM table1 WHERE a='Hello World'; "),
+			Token::vec(&[
+				(Select, 1, 2, "SeLECT"), (Ident, 1, 9, "a"), (Comma, 1, 10, ","), (Ident, 1, 15, "b"), (As, 1, 17, "as"), (Ident, 1, 20, "alias1"), (Comma, 1, 27, ","),
+				(Ident, 1, 29, "c"), (Ident, 1, 31, "alias2"), (Comma, 1, 37, ","), (Ident, 1, 39, "d"), (Ident, 1, 41, " alias three "),
+				(From, 2, 1, "fRoM"), (Ident, 2, 6, "table1"),
+				(Where, 2, 13, "WHERE"), (Ident, 2, 19, "a"), (Equal, 2, 20, "="), (StringLiteral, 2, 21, "Hello World"), (Semicolon, 2, 34, ";")
+			])
 		);
 	}
 
@@ -667,12 +747,14 @@ mod test {
 		GROUP BY departmentId;
 		";
 
-		assert_eq!(parse(query), vec![
-			Select(3,3), id("d",3,10), Dot(3,11), id("id",3,12), id("departmentId",3,15), Comma(3,27), id("count",3,29), LeftParen(3,34), id("e",3,35), Dot(3,36), id("id",3,37), RightParen(3,39), id("employeeCount",3,41),
-			From(4,3), id("department",4,8), id("d",4,19),
-			Left(5,3), Join(5,8), id("employee",5,13), id("e",5,22), On(5,24), id("e",5,27), Dot(5,28), id("departmentId",5,29), Equal(5,42), id("d",5,44), Dot(5,45), id("id",5,46),
-			Group(6,3), By(6,9), id("departmentId",6,12), Semicolon(6,24)
-		]);
+		assert_eq!(parse(query), Token::vec(&[
+			(Select, 3, 3, "SELECT"), (Ident, 3, 10, "d"), (Dot, 3, 11, "."), (Ident, 3, 12, "id"), (Ident, 3, 15, "departmentId"),
+			(Comma, 3, 27, ","), (Ident, 3, 29, "count"), (LeftParen, 3, 34, "("), (Ident, 3, 35, "e"), (Dot, 3, 36, "."), (Ident, 3, 37, "id"), (RightParen, 3, 39, ")"), (Ident, 3, 41, "employeeCount"),
+			(From, 4, 3, "FROM"), (Ident, 4, 8, "department"), (Ident, 4, 19, "d"),
+			(Left, 5, 3, "LEFT"), (Join, 5, 8, "JOIN"), (Ident, 5, 13, "employee"), (Ident, 5, 22, "e"), (On, 5, 24, "ON"), (Ident, 5, 27, "e"), 
+			(Dot, 5, 28, "."), (Ident, 5, 29, "departmentId"), (Equal, 5, 42, "="), (Ident, 5, 44, "d"), (Dot, 5, 45, "."), (Ident, 5, 46, "id"),
+			(Group, 6, 3, "GROUP"), (By, 6, 9, "BY"), (Ident, 6, 12, "departmentId"), (Semicolon, 6, 24, ";")
+		]));
 	}
 
 	#[test]
@@ -680,28 +762,27 @@ mod test {
 		use super::TokenType::*;
 
 		assert_eq!(parse("> = >=< =><"),
-			vec![
-				GreaterThan(1,1), Equal(1,3), GreaterThanOrEqual(1,5), LessThan(1,7), Equal(1,9), GreaterThan(1,10), LessThan(1,11)
-			]
+			Token::vec(&[
+				(GreaterThan, 1, 1, ">"), (Equal, 1, 3, "="), (GreaterThanOrEqual, 1, 5, ">="), (LessThan, 1, 7, "<"), (Equal, 1, 9, "="), (GreaterThan, 1, 10, ">"), (LessThan, 1, 11, "<")
+			])
 		);
 
 		assert_eq!(parse(" ><>> >< >"),
-			vec![
-				GreaterThan(1,2), NotEqual(1,3), GreaterThan(1,5), GreaterThan(1,7), LessThan(1,8), GreaterThan(1,10)
-			]
+			Token::vec(&[
+				(GreaterThan, 1, 2, ">"), (NotEqual, 1, 3, "<>"), (GreaterThan, 1, 5, ">"), (GreaterThan, 1, 7, ">"), (LessThan, 1, 8, "<"), (GreaterThan, 1, 10, ">")
+			])
 		);
 	}
-	
 	#[test]
 	fn test_sql_lexer_blockcomment() {
 		use super::TokenType::*;
 
-		assert_eq!(parse("hello/*/a/**/,/*there, */world"), vec![
-			id("hello",1,1), Comma(1,14), id("world",1,26)
-		]);
-		assert_eq!(parse("/ */"), vec![ForwardSlash(1,1), Asterisk(1,3), ForwardSlash(1,4)]);
-		assert_eq!(parse("/**/"), vec![]);
-		assert_eq!(parse("a/* test\ntest** /\nb*/c"), vec![id("a",1,1), id("c",3,4)]);
+		assert_eq!(parse("hello/*/a/**/,/*there, */world"), Token::vec(&[
+			(Ident, 1, 1, "hello"), (Comma, 1, 14, ","), (Ident, 1, 26, "world")
+		]));
+		assert_eq!(parse("/ */"), Token::vec(&[(ForwardSlash, 1, 1, "/"), (Asterisk, 1, 3, "*"), (ForwardSlash, 1, 4, "/")]));
+		assert_eq!(parse("/**/"), Token::vec(&[]));
+		assert_eq!(parse("a/* test\ntest** /\nb*/c"), Token::vec(&[(Ident, 1, 1, "a"), (Ident, 3, 4, "c")]));
 	}
 }
 
