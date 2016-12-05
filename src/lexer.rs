@@ -22,16 +22,18 @@ impl Token
 			value: value
 		}
 	}
-	// A convenience function to help write test cases more concisely.
-	//
-	pub fn vec( tuples: &[(TokenType, usize, usize, &str)] ) -> Vec<Self>
-	{
-		let mut ret = Vec::new();
-		for tuple in tuples {
-			ret.push(Self::new(tuple.0, tuple.1, tuple.2, tuple.3.to_string()));
+}
+
+macro_rules! tokens {
+	( $( $x:expr ),* ) => {
+		{
+			let mut _temp_vec = Vec::new();
+			$(
+				_temp_vec.push(Token::new($x.0, $x.1, $x.2, $x.3.to_string()));
+			)*
+			_temp_vec
 		}
-		ret
-	}
+	};
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -690,8 +692,8 @@ mod test {
 	{
 		use super::TokenType::*;
 		// Not: AS, Ident("df")
-		assert_eq!(parse("asdf"), Token::vec(&[(Ident, 1, 1, "asdf")]));
-		assert_eq!("asdf".to_string().tokenize(), Token::vec(&[(Ident, 1, 1, "asdf")]));
+		assert_eq!(parse("asdf"), tokens![(Ident, 1, 1, "asdf")]);
+		assert_eq!("asdf".to_string().tokenize(), tokens![(Ident, 1, 1, "asdf")]);
 	}
 
 	#[test]
@@ -699,8 +701,8 @@ mod test {
 	{
 		use super::TokenType::*;
 		// Escaped apostrophe
-		assert_eq!(parse(r"'\''"), Token::vec(&[(StringLiteral, 1, 1, "'")]));
-		assert_eq!(r"'\''".to_string().tokenize(), Token::vec(&[(StringLiteral, 1, 1, "'")]));
+		assert_eq!(parse(r"'\''"), tokens![(StringLiteral, 1, 1, "'")]);
+		assert_eq!(r"'\''".to_string().tokenize(), tokens![(StringLiteral, 1, 1, "'")]);
 	}
 
 	#[test]
@@ -708,15 +710,15 @@ mod test {
 	{
 		use super::TokenType::*;
 
-		assert_eq!(parse("12345"), Token::vec(&[(Number, 1, 1, "12345")]));
-		assert_eq!("12345".to_string().tokenize(), Token::vec(&[(Number, 1, 1, "12345")]));
-		assert_eq!(parse("0.25"), Token::vec(&[(Number, 1, 1, "0.25")]));
-		assert_eq!("0.25".to_string().tokenize(), Token::vec(&[(Number, 1, 1, "0.25")]));
-		assert_eq!(parse("0.25 + -0.25"), Token::vec(&[(Number, 1, 1, "0.25"), (Plus, 1, 6, "+"), (Minus, 1, 8, "-"), (Number, 1, 9, "0.25")]));
-		assert_eq!("-0.25 + 0.25".to_string().tokenize(), Token::vec(&[(Minus, 1, 1, "-"),(Number, 1, 2, "0.25"), (Plus, 1, 7, "+"), (Number, 1, 9, "0.25")]));
-		assert_eq!("- 0.25 - -0.25".to_string().tokenize(), Token::vec(&[(Minus, 1, 1, "-"),(Number, 1, 3, "0.25"), (Minus, 1, 8, "-"), (Minus, 1, 10, "-"), (Number, 1, 11, "0.25")]));
-		assert_eq!("- 0.25 --0.25".to_string().tokenize(), Token::vec(&[(Minus, 1, 1, "-"),(Number, 1, 3, "0.25")]));
-		assert_eq!("0.25 -0.25".to_string().tokenize(), Token::vec(&[(Number, 1, 1, "0.25"), (Minus, 1, 6, "-"), (Number, 1, 7, "0.25")]));
+		assert_eq!(parse("12345"), tokens![(Number, 1, 1, "12345")]);
+		assert_eq!("12345".to_string().tokenize(), tokens![(Number, 1, 1, "12345")]);
+		assert_eq!(parse("0.25"), tokens![(Number, 1, 1, "0.25")]);
+		assert_eq!("0.25".to_string().tokenize(), tokens![(Number, 1, 1, "0.25")]);
+		assert_eq!(parse("0.25 + -0.25"), tokens![(Number, 1, 1, "0.25"), (Plus, 1, 6, "+"), (Minus, 1, 8, "-"), (Number, 1, 9, "0.25")]);
+		assert_eq!("-0.25 + 0.25".to_string().tokenize(), tokens![(Minus, 1, 1, "-"),(Number, 1, 2, "0.25"), (Plus, 1, 7, "+"), (Number, 1, 9, "0.25")]);
+		assert_eq!("- 0.25 - -0.25".to_string().tokenize(), tokens![(Minus, 1, 1, "-"),(Number, 1, 3, "0.25"), (Minus, 1, 8, "-"), (Minus, 1, 10, "-"), (Number, 1, 11, "0.25")]);
+		assert_eq!("- 0.25 --0.25".to_string().tokenize(), tokens![(Minus, 1, 1, "-"),(Number, 1, 3, "0.25")]);
+		assert_eq!("0.25 -0.25".to_string().tokenize(), tokens![(Number, 1, 1, "0.25"), (Minus, 1, 6, "-"), (Number, 1, 7, "0.25")]);
 	}
 
 	#[test]
@@ -726,12 +728,12 @@ mod test {
 
 		assert_eq!(
 			parse(" SeLECT a,    b as alias1 , c alias2, d ` alias three ` \nfRoM table1 WHERE a='Hello World'; "),
-			Token::vec(&[
+			tokens![
 				(Select, 1, 2, "SeLECT"), (Ident, 1, 9, "a"), (Comma, 1, 10, ","), (Ident, 1, 15, "b"), (As, 1, 17, "as"), (Ident, 1, 20, "alias1"), (Comma, 1, 27, ","),
 				(Ident, 1, 29, "c"), (Ident, 1, 31, "alias2"), (Comma, 1, 37, ","), (Ident, 1, 39, "d"), (Ident, 1, 41, " alias three "),
 				(From, 2, 1, "fRoM"), (Ident, 2, 6, "table1"),
 				(Where, 2, 13, "WHERE"), (Ident, 2, 19, "a"), (Equal, 2, 20, "="), (StringLiteral, 2, 21, "Hello World"), (Semicolon, 2, 34, ";")
-			])
+			]
 		);
 	}
 
@@ -747,14 +749,14 @@ mod test {
 		GROUP BY departmentId;
 		";
 
-		assert_eq!(parse(query), Token::vec(&[
+		assert_eq!(parse(query), tokens![
 			(Select, 3, 3, "SELECT"), (Ident, 3, 10, "d"), (Dot, 3, 11, "."), (Ident, 3, 12, "id"), (Ident, 3, 15, "departmentId"),
 			(Comma, 3, 27, ","), (Ident, 3, 29, "count"), (LeftParen, 3, 34, "("), (Ident, 3, 35, "e"), (Dot, 3, 36, "."), (Ident, 3, 37, "id"), (RightParen, 3, 39, ")"), (Ident, 3, 41, "employeeCount"),
 			(From, 4, 3, "FROM"), (Ident, 4, 8, "department"), (Ident, 4, 19, "d"),
 			(Left, 5, 3, "LEFT"), (Join, 5, 8, "JOIN"), (Ident, 5, 13, "employee"), (Ident, 5, 22, "e"), (On, 5, 24, "ON"), (Ident, 5, 27, "e"), 
 			(Dot, 5, 28, "."), (Ident, 5, 29, "departmentId"), (Equal, 5, 42, "="), (Ident, 5, 44, "d"), (Dot, 5, 45, "."), (Ident, 5, 46, "id"),
 			(Group, 6, 3, "GROUP"), (By, 6, 9, "BY"), (Ident, 6, 12, "departmentId"), (Semicolon, 6, 24, ";")
-		]));
+		]);
 	}
 
 	#[test]
@@ -762,27 +764,27 @@ mod test {
 		use super::TokenType::*;
 
 		assert_eq!(parse("> = >=< =><"),
-			Token::vec(&[
+			tokens![
 				(GreaterThan, 1, 1, ">"), (Equal, 1, 3, "="), (GreaterThanOrEqual, 1, 5, ">="), (LessThan, 1, 7, "<"), (Equal, 1, 9, "="), (GreaterThan, 1, 10, ">"), (LessThan, 1, 11, "<")
-			])
+			]
 		);
 
 		assert_eq!(parse(" ><>> >< >"),
-			Token::vec(&[
+			tokens![
 				(GreaterThan, 1, 2, ">"), (NotEqual, 1, 3, "<>"), (GreaterThan, 1, 5, ">"), (GreaterThan, 1, 7, ">"), (LessThan, 1, 8, "<"), (GreaterThan, 1, 10, ">")
-			])
+			]
 		);
 	}
 	#[test]
 	fn test_sql_lexer_blockcomment() {
 		use super::TokenType::*;
 
-		assert_eq!(parse("hello/*/a/**/,/*there, */world"), Token::vec(&[
+		assert_eq!(parse("hello/*/a/**/,/*there, */world"), tokens![
 			(Ident, 1, 1, "hello"), (Comma, 1, 14, ","), (Ident, 1, 26, "world")
-		]));
-		assert_eq!(parse("/ */"), Token::vec(&[(ForwardSlash, 1, 1, "/"), (Asterisk, 1, 3, "*"), (ForwardSlash, 1, 4, "/")]));
-		assert_eq!(parse("/**/"), Token::vec(&[]));
-		assert_eq!(parse("a/* test\ntest** /\nb*/c"), Token::vec(&[(Ident, 1, 1, "a"), (Ident, 3, 4, "c")]));
+		]);
+		assert_eq!(parse("/ */"), tokens![(ForwardSlash, 1, 1, "/"), (Asterisk, 1, 3, "*"), (ForwardSlash, 1, 4, "/")]);
+		assert_eq!(parse("/**/"), tokens![]);
+		assert_eq!(parse("a/* test\ntest** /\nb*/c"), tokens![(Ident, 1, 1, "a"), (Ident, 3, 4, "c")]);
 	}
 }
 
