@@ -2,27 +2,7 @@
  * Generously hacked LambdaDB tokenizer, with keywords added from SQLite.
  */
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct Token
-{
-	token_type: TokenType,
-	line: usize,
-	column: usize,
-	value: String,
-}
-
-impl Token
-{
-	pub fn new(tt: TokenType, line: usize, column: usize, value: String) -> Self
-	{
-		Self {
-			token_type: tt,
-			line: line,
-			column: column,
-			value: value
-		}
-	}
-}
+use tokens::*;
 
 macro_rules! tokens {
 	( $( $x:expr ),* ) => {
@@ -36,154 +16,7 @@ macro_rules! tokens {
 	};
 }
 
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub enum TokenType
-{
-	// Keywords
-	Abort,
-	Action,
-	Add,
-	After,
-	All,
-	Alter,
-	Analyze,
-	And,
-	As,
-	Asc,
-	Attach,
-	Autoincr,
-	Before,
-	Begin,
-	Between,
-	By,
-	Cascade,
-	Case,
-	Cast,
-	Check,
-	Collate,
-	Column,
-	Commit,
-	Conflict,
-	Constraint,
-	Create,
-	CTime,
-	Database,
-	Default,
-	Deferrable,
-	Deferred,
-	Delete,
-	Desc,
-	Detach,
-	Distinct,
-	Drop,
-	Each,
-	Else,
-	End,
-	Escape,
-	Except,
-	Exclusive,
-	Exists,
-	Explain,
-	Fail,
-	For,
-	Foreign,
-	From,
-	Group,
-	Having,
-	If,
-	Ignore,
-	Immediate,
-	In,
-	Index,
-	Indexed,
-	Initially,
-	Inner,
-	Insert,
-	Instead,
-	Intersect,
-	Into,
-	Is,
-	IsNull,
-	Join,
-	Key,
-	Left,
-	Like,
-	Limit,
-	Match,
-	No,
-	Not,
-	NotNull,
-	Null,
-	Of,
-	Offset,
-	On,
-	Or,
-	Order,
-	Plan,
-	Pragma,
-	Primary,
-	Query,
-	Raise,
-	Recursive,
-	References,
-	Reindex,
-	Release,
-	Rename,
-	Replace,
-	Restrict,
-	Rollback,
-	Row,
-	Savepoint,
-	Select,
-	Set,
-	Table,
-	Temp,
-	Then,
-	To,
-	Transaction,
-	Trigger,
-	Union,
-	Update,
-	Using,
-	Vacuum,
-	Values,
-	View,
-	Virtual,
-	With,
-	Without,
-	When,
-	Where,
 
-	// Non-letter tokens
-	Equal,
-	NotEqual,
-	LessThan,
-	LessThanOrEqual,
-	GreaterThan,
-	GreaterThanOrEqual,
-
-	Plus, Minus,
-
-	LeftParen, RightParen,
-	LeftBracket, RightBracket,
-	Dot, Comma, Semicolon,
-
-	Ampersand, Pipe, ForwardSlash,
-
-	/// ||, the concatenate operator
-	DoublePipe,
-
-	/// *, the wildcard for SELECT
-	Asterisk,
-
-	/// ?, the prepared statement placeholder
-	PreparedStatementPlaceholder,
-	
-	// Tokens with values
-	Ident,
-	Number,
-	StringLiteral,
-}
 
 enum LexerState {
 	NoState,
@@ -233,7 +66,7 @@ impl Lexer {
 	
 	fn character_to_token(&self, c: char) -> Option<Token>
 	{
-		use self::TokenType::*;
+		use tokens::TokenType::*;
 
 		let tt: TokenType;
 	
@@ -273,7 +106,7 @@ impl Lexer {
 
 	fn push_word(&mut self)
 	{
-		use self::TokenType::*;
+		use tokens::TokenType::*;
 		let word = self.move_string_buffer();
 		let uppercase: String = word.chars().flat_map( |c| c.to_uppercase() ).collect();
 		let tt: TokenType;
@@ -445,7 +278,7 @@ impl Lexer {
 				Ok(LexerState::NoState)
 			},
 			c => {
-				use self::TokenType::*;
+				use tokens::TokenType::*;
 				match self.character_to_token(c) {
 					Some(token) => {
 						match token.token_type {
@@ -509,7 +342,7 @@ impl Lexer {
 				}
 			},
 			LexerState::Backtick => {
-				use self::TokenType::*;
+				use tokens::TokenType::*;
 				match c {
 					Some('`') => {
 						let buffer = self.move_string_buffer();
@@ -533,7 +366,7 @@ impl Lexer {
 			},
 			LexerState::Apostrophe { escaping } => {
 				if let Some(c) = c {
-					use self::TokenType::*;
+					use tokens::TokenType::*;
 					match (escaping, c) {
 						(false, '\'') => {
 							// unescaped apostrophe
@@ -573,7 +406,7 @@ impl Lexer {
 							LexerState::Number { decimal: true }
 						},
 						c => {
-							use self::TokenType::*;
+							use tokens::TokenType::*;
 							let buffer = self.move_string_buffer();
 							self.tokens.push(Token {
 								line: self.start_line_number,
@@ -585,7 +418,7 @@ impl Lexer {
 						}
 					}
 				} else {
-					use self::TokenType::*;
+					use tokens::TokenType::*;
 					let buffer = self.move_string_buffer();
 					self.tokens.push(Token {
 						line: self.start_line_number,
@@ -597,7 +430,7 @@ impl Lexer {
 				}
 			},
 			LexerState::OperatorDisambiguate { first } => {
-				use self::TokenType::*;
+				use tokens::TokenType::*;
 
 				if let Some(c) = c {
 					match (first, c) {
@@ -684,13 +517,13 @@ impl Tokenizer for String
 #[cfg(test)]
 mod test {
 	use super::parse;
-	use super::Token;
+	use tokens::*;
+	use tokens::TokenType::*;
 	use super::Tokenizer;
 
 	#[test]
 	fn test_sql_lexer_dontconfuseidentswithkeywords()
 	{
-		use super::TokenType::*;
 		// Not: AS, Ident("df")
 		assert_eq!(parse("asdf"), tokens![(Ident, 1, 1, "asdf")]);
 		assert_eq!("asdf".to_string().tokenize(), tokens![(Ident, 1, 1, "asdf")]);
@@ -699,7 +532,6 @@ mod test {
 	#[test]
 	fn test_sql_lexer_escape()
 	{
-		use super::TokenType::*;
 		// Escaped apostrophe
 		assert_eq!(parse(r"'\''"), tokens![(StringLiteral, 1, 1, "'")]);
 		assert_eq!(r"'\''".to_string().tokenize(), tokens![(StringLiteral, 1, 1, "'")]);
@@ -708,8 +540,6 @@ mod test {
 	#[test]
 	fn test_sql_lexer_numbers()
 	{
-		use super::TokenType::*;
-
 		assert_eq!(parse("12345"), tokens![(Number, 1, 1, "12345")]);
 		assert_eq!("12345".to_string().tokenize(), tokens![(Number, 1, 1, "12345")]);
 		assert_eq!(parse("0.25"), tokens![(Number, 1, 1, "0.25")]);
@@ -724,8 +554,6 @@ mod test {
 	#[test]
 	fn test_sql_lexer_query1()
 	{
-		use super::TokenType::*;
-
 		assert_eq!(
 			parse(" SeLECT a,    b as alias1 , c alias2, d ` alias three ` \nfRoM table1 WHERE a='Hello World'; "),
 			tokens![
@@ -739,8 +567,6 @@ mod test {
 
 	#[test]
 	fn test_sql_lexer_query2() {
-		use super::TokenType::*;
-
 		let query = r"
 		-- Get employee count from each department
 		SELECT d.id departmentId, count(e.id) employeeCount
@@ -761,8 +587,6 @@ mod test {
 
 	#[test]
 	fn test_sql_lexer_operators() {
-		use super::TokenType::*;
-
 		assert_eq!(parse("> = >=< =><"),
 			tokens![
 				(GreaterThan, 1, 1, ">"), (Equal, 1, 3, "="), (GreaterThanOrEqual, 1, 5, ">="), (LessThan, 1, 7, "<"), (Equal, 1, 9, "="), (GreaterThan, 1, 10, ">"), (LessThan, 1, 11, "<")
@@ -777,8 +601,6 @@ mod test {
 	}
 	#[test]
 	fn test_sql_lexer_blockcomment() {
-		use super::TokenType::*;
-
 		assert_eq!(parse("hello/*/a/**/,/*there, */world"), tokens![
 			(Ident, 1, 1, "hello"), (Comma, 1, 14, ","), (Ident, 1, 26, "world")
 		]);
@@ -787,4 +609,3 @@ mod test {
 		assert_eq!(parse("a/* test\ntest** /\nb*/c"), tokens![(Ident, 1, 1, "a"), (Ident, 3, 4, "c")]);
 	}
 }
-
